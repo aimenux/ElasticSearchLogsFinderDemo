@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 
 namespace App
 {
@@ -37,19 +38,16 @@ namespace App
                 {
                     services.AddLogging(loggingBuilder =>
                     {
+                        loggingBuilder.AddConsoleLogger();
                         loggingBuilder.AddNonGenericLogger();
+                        loggingBuilder.AddFileLogger(hostingContext);
                         loggingBuilder.SetMinimumLevel(LogLevel.Trace);
-                        loggingBuilder.AddConsole(options =>
-                        {
-                            options.DisableColors = false;
-                            options.TimestampFormat = "[HH:mm:ss:fff] ";
-                        });
-                        loggingBuilder.AddFile(hostingContext.Configuration.GetSection("Logging"));
                     });
                     services.AddLocalization();
                     services.AddHostedService<ElasticHostedService>();
                     services.AddTransient<IElasticProvider, ElasticProvider>();
                     services.AddTransient<ICustomJsonSerializer, CustomJsonSerializer>();
+                    services.AddHttpClient<IElasticProvider, ElasticProvider>();
                     services.Configure<Settings>(hostingContext.Configuration.GetSection(nameof(Settings)));
                 })
                 .UseConsoleLifetime()
@@ -60,6 +58,24 @@ namespace App
             Console.WriteLine("End!");
             Console.WriteLine("Press any key to exit !");
             Console.ReadKey();
+        }
+
+        private static void AddConsoleLogger(this ILoggingBuilder loggingBuilder)
+        {
+            loggingBuilder.AddConsole(options =>
+            {
+                options.DisableColors = false;
+                options.TimestampFormat = "[HH:mm:ss:fff] ";
+            });
+
+            loggingBuilder.AddFilter<ConsoleLoggerProvider>("System", LogLevel.Warning);
+            loggingBuilder.AddFilter<ConsoleLoggerProvider>("Microsoft", LogLevel.Warning);
+            loggingBuilder.AddFilter<ConsoleLoggerProvider>("Default", LogLevel.Information);
+        }
+
+        private static void AddFileLogger(this ILoggingBuilder loggingBuilder, HostBuilderContext hostingContext)
+        {
+            loggingBuilder.AddFile(hostingContext.Configuration.GetSection("Logging"));
         }
 
         private static void AddNonGenericLogger(this ILoggingBuilder loggingBuilder)

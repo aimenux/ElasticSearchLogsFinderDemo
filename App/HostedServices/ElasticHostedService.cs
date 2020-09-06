@@ -34,11 +34,15 @@ namespace App.HostedServices
 
             _logger.LogInformation("Starting streaming logs from elastic search");
 
+            long nbrPayloads = 0;
             await foreach (var payload in _provider.QueryAsync<ElasticPayload>(cancellationToken))
             {
+                nbrPayloads++;
                 var json = _serializer.Serialize(payload);
                 _logger.LogInformation("Found matching logs: {json}", json);
             }
+
+            _logger.LogInformation("Found {nbr} payload(s)", nbrPayloads);
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
